@@ -7,6 +7,11 @@
   - System Volume Protections
   - Firmlinks
   - Important Directories
+    - POSIX Directories
+    - LaunchDaemons and LaunchAgents
+    - Applications
+    - Frameworks
+    - Kernel and Kernel Extensions (KEXTs)
   - Property List Files
   - Bundles
   - The Application Bundle
