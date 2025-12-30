@@ -1,6 +1,7 @@
 # Introduction to macOS
 
 1. macOS System Overview
+
 2. High-Level OS Architecture
   - Apple Proprietary File System (APFS)
   - System Volume Protections
