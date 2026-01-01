@@ -674,7 +674,7 @@ In the next section, we will learn about Mach-O files, which is the executable f
 
 Mach-O, or Mach Object, is a file format for various program files on all Apple platforms, from macOS to tvOS. Mach-O file types range from standard executables to dylibs, frameworks, and even kernel extensions.
 
-In this section, we will discuss the core concepts and buildout of Mach-O files. As we go along, we will use MachOView, and the otool command-line utility to analyze the /bin/ls executable.
+In this section, we will discuss the core concepts and buildout of Mach-O files. As we go along, we will use XMachOViewer, and the otool command-line utility to analyze the /bin/ls executable.
 
 We will also use the source code of XNU version 7195.50.7.100.1 to understand the building blocks of Mach-O files. We can view it online or download it and view it locally.
 
@@ -819,13 +819,69 @@ Mach header
 MH_MAGIC_64   X86_64        ALL  0x00     EXECUTE    18       1736   NOUNDEFS DYLDLINK TWOLEVEL PIE
 ```
 
-We can find the same results displayed in code block above in MachOView as well.
+We can find the same results displayed in code block above in XMachOViewer as well.
 
+<img width="1064" height="611" alt="Screenshot 2026-01-01 at 16 00 28" src="https://github.com/user-attachments/assets/88539746-9b88-41d0-953f-e706192c6739" />
 
+We can confirm this also from the fact that the header’s last four-byte entry is at 001c, as indicated in screenshot above.
 
+The various load commands have different structures, but each one begins with the same eight bytes, which define the type of command, and the total size of the command (in bytes). The structure definition is defined in the same xnu-7195.50.7.100.1/EXTERNAL_HEADERS/macho/loader.h file.
 
+```
+struct load_command {
+	uint32_t cmd;			/* type of load command */
+	uint32_t cmdsize;		/* total size of command in bytes */
+};
+```
 
+There are about 50 different types of load commands that the system handles differently. We will briefly discuss the most common ones that we will encounter. These are LC_SEGMENT_64, LC_LOAD_DYLINKER, LC_MAIN, LC_LOAD_DYLIB, and LC_CODE_SIGNATURE.
 
+### Load Commands
+
+As a bit of review, load commands are structures that describe how to load different parts of the executable into memory.
+
+LC_SEGMENT_64 (or LC_SEGMENT for x86 architecture) defines a segment that will be mapped into the process’s memory space. The segment might be a __TEXT segment, which contains the executable code, or a __DATA segment, which contains data for the process.
+
+All segments can be found in the data portion of the Mach-O file. Each segment contains multiple sections, and the load command structure will contain information about each section inside the segment. The section information will directly follow the LC_SEGMENT_64 command. The structure of the command is shown in code block bellow.
+
+```
+struct segment_command_64 { 		/* for 64-bit architectures */
+ 	uint32_t cmd; 					/* LC_SEGMENT_64 */
+ 	uint32_t cmdsize; 				/* includes sizeof section_64 structs */
+ 	char segname[16]; 				/* segment name */
+ 	uint64_t vmaddr; 				/* memory address of this segment */
+ 	uint64_t vmsize; 				/* memory size of this segment */
+ 	uint64_t fileoff; 				/* file offset of this segment */
+ 	uint64_t filesize; 				/* amount to map from the file */
+ 	vm_prot_t maxprot; 				/* maximum VM protection */
+ 	vm_prot_t initprot; 			/* initial VM protection */
+ 	uint32_t nsects; 				/* number of sections in segment */
+	uint32_t flags; 				/* flags */
+};
+```
+
+The LC_SEGMENT_64 command defines the number of sections in the nsects member. After the LC_SEGMENT_64 command structure, we have the section information.
+
+```
+struct section_64 { 				/* for 64-bit architectures */
+ 	char sectname[16]; 				/* name of this section */
+ 	char segname[16]; 				/* segment this section goes in */
+ 	uint64_t addr; 					/* memory address of this section */
+ 	uint64_t size; 					/* size in bytes of this section */
+ 	uint32_t offset; 				/* file offset of this section */
+ 	uint32_t align; 				/* section alignment (power of 2) */
+ 	uint32_t reloff; 				/* file offset of relocation entries */
+ 	uint32_t nreloc; 				/* number of relocation entries */
+ 	uint32_t flags; 				/* flags (section type and attributes)*/
+ 	uint32_t reserved1; 			/* reserved (for offset or index) */
+ 	uint32_t reserved2; 			/* reserved (for count or sizeof) */
+	uint32_t reserved3; 			/* reserved */
+};
+```
+
+The section structure will hold the actual information about the section location in the file that is pointed to by the offset member.
+
+To make sense of this, let’s take a look at the binary in XMachOViewer.
 
 
 
